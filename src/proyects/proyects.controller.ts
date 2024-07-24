@@ -12,9 +12,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ProyectsService } from './proyects.service';
-import { Proyecto } from './interfaces/proyect.interface';
+//import { Proyecto } from './interfaces/proyect.interface';
 import { CreateProyectDto } from './dto/create-proyect.dto';
 import { UpdateProyectDto } from './dto/update-proyect.dto';
+import { Proyecto } from './entities/proyecto.entity';
 
 @Controller('proyects')
 //@UsePipes(ValidationPipe)
@@ -22,16 +23,13 @@ export class ProyectsController {
   constructor(private readonly proyectsService: ProyectsService) {}
 
   @Get()
-  getProyects(): Proyecto[] {
+  getProyects(): Promise<Proyecto[]> {
     return this.proyectsService.findAll();
   }
 
   @Get(':id')
-  getProyectById(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-  ): Proyecto {
-    console.log({ id });
-    return this.proyectsService.findOneById(id);
+  async getProyectById(@Param('id') id: string): Promise<Proyecto> {
+    return await this.proyectsService.findOneById(id);
   }
 
   @Post()
@@ -41,7 +39,7 @@ export class ProyectsController {
 
   @Patch(':id')
   updateProyect(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() updateProyectDto: UpdateProyectDto,
   ) {
     console.log({ updateProyectDto });

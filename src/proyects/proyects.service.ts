@@ -1,11 +1,25 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Proyecto } from './interfaces/proyect.interface';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Proyecto as pro } from './interfaces/proyect.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateProyectDto, UpdateProyectDto } from './dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Proyecto, ProyectoSchema } from './entities/proyecto.entity';
+import { Model } from 'mongoose';
+import { isValidObjectId } from 'mongoose';
 
 @Injectable()
 export class ProyectsService {
-  private proyects: Proyecto[] = [
+  constructor(
+    @InjectModel(Proyecto.name)
+    private readonly proyectoModel: Model<Proyecto>,
+  ) {}
+
+  private proyects: pro[] = [
     {
       id: uuidv4(),
       name: 'Proyecto 1',
@@ -13,7 +27,7 @@ export class ProyectsService {
       date: '21/07/2024',
       priority: 'baja',
       description: 'Descripcion 1',
-      status: 'In progress',
+      status: 'En progreso',
       tasks: ['Task 1', 'Task 2'],
     },
 
@@ -24,7 +38,7 @@ export class ProyectsService {
       date: '21/07/2024',
       priority: 'alta',
       description: 'Descripcion 2',
-      status: 'In progress',
+      status: 'En progreso',
       tasks: ['Task 1', 'Task 2'],
     },
     {
@@ -34,51 +48,60 @@ export class ProyectsService {
       date: '21/07/2024',
       priority: 'media',
       description: 'Descripcion 3',
-      status: 'In progress',
+      status: 'Por hacer',
       tasks: ['Task 1', 'Task 2'],
     },
   ];
 
-  findAll(): Proyecto[] {
-    return this.proyects;
+  async findAll(): Promise<Proyecto[]> {
+    const response = this.proyectoModel.find();
+    return response;
   }
 
-  findOneById(id: string) {
-    const proyectos = this.proyects.find((proyecto) => proyecto.id === id);
-    if (!proyectos)
+  async findOneById(id: string): Promise<Proyecto> {
+    // const proyectos = this.proyects.find((proyecto) => proyecto.id === id);
+    // if (!proyectos)
+    //   throw new NotFoundException(`Proyecto con id ${id} no encontrado`);
+    // return proyectos;
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException(`Id ${id} no valido`);
+    }
+    const proyecto = await this.proyectoModel.findOne({ _id: id });
+    if (!proyecto) {
       throw new NotFoundException(`Proyecto con id ${id} no encontrado`);
-    return proyectos;
+    }
+    return proyecto;
   }
 
-  create(createProyectDto: CreateProyectDto) {
-    console.log(createProyectDto);
-    const proyecto: Proyecto = {
-      id: uuidv4(),
-      ...createProyectDto,
-    };
-    this.proyects.push(proyecto);
-    return createProyectDto;
-  }
-
-  update(id: string, updateProyectDto: UpdateProyectDto) {
-    let proyectDB = this.findOneById(id);
-
-    if (updateProyectDto.id && updateProyectDto.id !== id)
-      throw new NotFoundException('No se puede cambiar el id del proyecto');
-
-    this.proyects = this.proyects.map((proyecto) => {
-      if (proyecto.id === id) {
-        proyectDB = { ...proyectDB, ...updateProyectDto };
-        return proyectDB;
-      }
+  async create(createProyectDto: CreateProyectDto) {
+    try {
+      const proyecto = await this.proyectoModel.create(createProyectDto);
       return proyecto;
+    } catch (error) {
+      console.error(error);
+      if (error.code === 11000) {
+        throw new BadRequestException(
+          'Nombre de proyecto ya utilizado, por favor utilice otro nombre!',
+        );
+      }
+
+      throw new InternalServerErrorException(
+        `Error al crear el proyecto - revisar logs del serivdor`,
+      );
+    }
+  }
+
+  async update(id: string, updatePokemonDto: UpdateProyectDto) {
+    const proyecto = await this.findOneById(id);
+
+    const updateProyecto = await proyecto.updateOne(updatePokemonDto, {
+      new: true,
     });
-    return proyectDB;
+    return updateProyecto;
   }
 
   delete(id: string) {
     const proyecto = this.findOneById(id);
-
     this.proyects = this.proyects.filter((proyecto) => proyecto.id !== id);
     // return {
     //   method: 'DELETE',

@@ -2,7 +2,6 @@ import { IsString, IsArray, IsUUID, IsOptional } from 'class-validator';
 
 export class UpdateProyectDto {
   @IsString()
-  @IsUUID()
   @IsOptional()
   readonly id?: string;
 
